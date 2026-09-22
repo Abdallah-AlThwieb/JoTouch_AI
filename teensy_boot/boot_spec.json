@@ -1,0 +1,36 @@
+{
+  "model": "JoTouchBootModel (MobileNetV2-1D + TCN backbone, regression boot head)",
+  "input": {
+    "channels": 8,
+    "time_steps": 20,
+    "sampling_hz": 100,
+    "window": "20 x 10ms = 200ms, stride 5 (50ms update)",
+    "normalization": "per-channel min-max to [0,1]; stats MUST come from on-device calibration on the patient's own band",
+    "reference_stats": "Content/open_fmg_data/zenodo_norm_stats.npz (reference only)"
+  },
+  "outputs": {
+    "zenodo": {
+      "dim": 2,
+      "meaning": "2-axis continuous position command [0..1] (e.g. wrist up/down, left/right)",
+      "test_mae": 0.0195,
+      "test_r2": 0.917
+    },
+    "plos": {
+      "dim": 1,
+      "meaning": "grip closure intensity [0..1]",
+      "test_mae": 0.3052,
+      "test_r2": 0.024,
+      "warning": "weak on open data — prefer gesture head + stepped intensity until own-device data exists"
+    }
+  },
+  "latency_ms_cpu": {
+    "zenodo": 1.43,
+    "plos": 1.61
+  },
+  "deployment": "PyTorch .pt -> this C header -> TFLM int8 quantization per Content/JoTouch_AI_Analysis.md (س14)",
+  "control_chain": [
+    "Stage 1: FMG window -> continuous command (these weights)",
+    "Stage 2: motor_cmd[7] = intensity * SYNERGY_TABLE[gesture][7]",
+    "Stage 3: 7 motors -> 12-16 finger DOFs mechanically (tendons)"
+  ]
+}
